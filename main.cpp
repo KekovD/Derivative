@@ -14,9 +14,6 @@ int main()
     std::cout << "Выражение (без пробелов):";
     std::cin >> string;
 
-    std::cout << "Исходное:";
-    std::cout << string;
-
     tree.processing(string);
     getch();
 
