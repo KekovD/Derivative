@@ -23,7 +23,7 @@ void tree_element::processing (char *string)  // Преобразование в
     {
         tree_element* tree = nullptr;
         tree = build (string, 0, strlen (string) - 1);
-        std::cout << "\nПеременная:";
+        std::cout << "Переменная:";
         std::cin >> ch;
 
         differentiation (tree, ch);
