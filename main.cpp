@@ -4,24 +4,20 @@
 #include <iostream>
 #include <windows.h>
 
-int main(int argc, char* argv[])
+int main()
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    char str[200] = {0};
-    tree_elem tree;
+    char string[256] = {0};
+    tree_element tree;
 
-    if(argc > 1)
-        strcpy(str,argv[1]);
-    else
-    {
-        std::cout << "Выражение (без пробелов):";
-        std::cin >> str;
-    }
+    std::cout << "Выражение (без пробелов):";
+    std::cin >> string;
 
     std::cout << "Исходное:";
-    std::cout << str;
-    tree.Processing(str);
+    std::cout << string;
+
+    tree.processing(string);
     getch();
 
     return 0;

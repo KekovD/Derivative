@@ -3,35 +3,35 @@
 #include <cctype>
 #include <iostream>
 
-tree_elem::tree_elem ()
+tree_element::tree_element ()
 {
     right = nullptr;
     left = nullptr;
-    symbol = 0;
-    oper = 0;
+    variable = 0;
+    operation = 0;
     func = notfunc;
     number = 1;
-    complex_oper = 0;
+    complex_operation = false;
 }
 
-void tree_elem::Processing (char *str) // Процесс преобразования выражения
+void tree_element::processing (char *string)  // Преобразование выражения
 {
     char ch = 0;
-    int str_index = 0;
+    int string_index = 0;
 
-    if(analysis (str,str_index))
+    if (analysis (string,string_index))  // анализ строки на правильность ввода
     {
-        tree_elem* my_tree = nullptr;
-        my_tree = build_tree (str, 0, strlen (str) - 1);
+        tree_element* tree = nullptr;
+        tree = build (string, 0, strlen (string) - 1);
         std::cout << "\nПеременная:";
         std::cin >> ch;
 
-        Diff (my_tree, ch);
-        Simplify (my_tree);
-        change_oper (my_tree);
-        Calc (my_tree);
+        differentiation (tree, ch);
+        simplify (tree);
+        change_operation (tree);
+        calculate (tree);
         std::cout << "Результат:";
-        LRR (my_tree, std::cout);
+        LRR (tree, std::cout);
         return;
     }
     else
@@ -41,312 +41,314 @@ void tree_elem::Processing (char *str) // Процесс преобразова�
 }
 
 
-tree_elem *tree_elem::build_tree (char *str, int ind1, int ind2, int complex_oper)
+tree_element *tree_element::build (char *string, int it1, int it2, int complex_oper)
 {
-    int cur = ind1;
-    tree_elem* res = nullptr;
+    int current = it1;  // текущий узел
+    tree_element* result = nullptr;
 
-    if (str[cur] == '(')
+    if (string[current] == '(')
     {
-        ignore_brackets (str, cur);
+        ignore_brackets (string, current);  // игнорируем то, что внутри их
     }
 
-    if (cur == ind2 + 1)
+    if (current == it2 + 1)  // если номер символа равен второму слагаемому
     {
-        res = build_tree (str, ind1 + 1, ind2 - 1, 1);
+        result = build (string, it1 + 1, it2 - 1, 1);  // рекурсия по слагаемым
     }
-    else
+    else  // поиск первого вхождения + - ( )
     {
         Repeat:
 
-        while (cur < ind2 && str[cur] != '+' && str[cur] != '-' && str[cur] != '(' && str[cur] != ')')
+        while (current < it2 && string[current] != '+' && string[current] != '-'
+            && string[current] != '(' && string[current] != ')')
         {
-            cur++;
+            current++;
         }
 
-        if (cur == ind1 && str[cur] == '+' || str[cur] == '-')
+        if (current == it1 && string[current] == '+' || string[current] == '-')
         {
-            cur++;
-            goto Repeat;
+            current++;
+            goto Repeat;  // возвращаемся на начало проверки
         }
 
-        if (str[cur] == '(')
+        if (string[current] == '(')
         {
-            ignore_brackets (str, cur);
-            goto Repeat;
+            ignore_brackets (string, current);
+            goto Repeat; // проверяем следующий
         }
 
-        if (cur == ind2 + 1)
+        if (current == it2 + 1)  // символ равен второму слагаемому
         {
-            cur--;
+            current--;
         }
 
-        if (cur != ind2 && str[cur] != ')')
+        if (current != it2 && string[current] != ')')  // есть плюс или минус и нет скобки
         {
-            res = new tree_elem;
+            result = new tree_element;  // создаем новый элемент
 
-            if (str[cur] == '-')
+            if (string[current] == '-')
             {
-                res->oper = '-';
+                result->operation = '-';
             }
 
-            if (str[cur] == '+')
+            if (string[current] == '+')
             {
-                res->oper = '+';
+                result->operation = '+';
             }
 
-            res->complex_oper = complex_oper;
-            res->left = build_tree (str, ind1, cur - 1);
-            res->right = build_tree (str, cur + 1, ind2);
+            result->complex_operation = complex_oper;  // то, что разбивается на произведения слева от текущего
+            result->left = build (string, it1, current - 1);   // строим правую
+            result->right = build (string, current + 1, it2);  // и левую ветвь
         }
-        else
+        else  // если нет + и -
         {
-            res = mul_n_div (str, ind1, ind2);
+            result = multiplication_and_division (string, it1, it2);  // разбиваем на произведения
         }
     }
-    return res;
+    return result;
 }
 
-tree_elem* tree_elem::mul_n_div (char* str, int ind1, int ind2)
+tree_element* tree_element::multiplication_and_division (char* string, int it1, int it2)
 {
-    int cur = ind1;
+    int current = it1;
 
-    Repeat_1:
+    Repeat_1:  // аналогично поиску + и -, но сначала ищем * и /, а потом ^
 
-    while (cur < ind2 && str[cur] != '*' && str[cur] != '/' && str[cur] != '(')
+    while (current < it2 && string[current] != '*' && string[current] != '/' && string[current] != '(')  // поиск * и /
     {
-        cur++;
+        current++;
     }
 
-    if (str[cur] == '(')
+    if (string[current] == '(')
     {
-        ignore_brackets (str, cur);
-        cur--;
+        ignore_brackets (string, current);
+        current--;
         goto Repeat_1;
     }
 
-    if(cur == ind2)
+    if(current == it2)  // поиск ^
     {
-        cur = ind1;
+        current = it1;
 
         Repeat_2:
 
-        while (cur < ind2 && str[cur] != '^' && str[cur] != '(')
+        while (current < it2 && string[current] != '^' && string[current] != '(')
         {
-            cur++;
+            current++;
         }
 
-        if(str[cur] == '(')
+        if(string[current] == '(')
         {
-            ignore_brackets (str, cur);
-            cur--;
+            ignore_brackets (string, current);
+            current--;
             goto Repeat_2;
         }
     }
 
-    tree_elem* res = nullptr;
+    tree_element* result = nullptr;
 
-    if (cur != ind2)
+    if (current != it2)  // текущая операция не равна второму слагаемому
     {
-        res = new tree_elem;
+        result = new tree_element;
 
-        if (str[cur] == '*')
+        if (string[current] == '*')
         {
-            res->oper = '*';
+            result->operation = '*';
         }
-        else if (str[cur] == '/')
+        else if (string[current] == '/')
         {
-            res->oper = '/';
+            result->operation = '/';
         }
-        else if (str[cur] == '^')
+        else if (string[current] == '^')
         {
-            res->oper = '^';
+            result->operation = '^';
         }
 
-        res->left = build_tree (str, ind1, cur - 1);
-        res->right = build_tree (str, cur + 1, ind2);
+        result->left = build (string, it1, current - 1);  // строим левую
+        result->right = build (string, current + 1, it2); // и правую ветвь
     }
-    else
+    else  // если операция не найдена
     {
-        res = create_leaf (str, ind1, ind2);
+        result = create_leaf (string, it1, it2);
     }
 
-    return res;
+    return result;
 }
 
-tree_elem *tree_elem::create_leaf (char* str, int ind1, int ind2)
+tree_element *tree_element::create_leaf (char* string, int it1, int it2)
 {
-    auto res = new tree_elem;
-    int cur = ind1;
+    auto result = new tree_element;
+    int current = it1;  // символ является первым слагаемым
 
-    if(isdigit (str[ind1]) || str[cur] == '+' || str[cur] == '-')
+    if(isdigit (string[it1]) || string[current] == '+' || string[current] == '-')  // если это число, + или -
     {
-        res->number = get_number(str,cur);
+        result->number = get_number(string,current);  // записываем значение
     }
 
-    if(isalpha (str[cur]))
+    if(isalpha (string[current]))  // если это символ
     {
-        if(isalpha (str[cur+1]))
+        if(isalpha (string[current + 1]))  // если следующий символ
         {
             char* temp = nullptr;
-            temp = get_token (str,cur);
+            temp = get_token (string,current); // берём токен
 
             if (temp)
             {
-                res->func = isfunc (temp);
+                result->func = is_function (temp); // записываем найденную функцию
                 delete temp;
             }
 
-            res->left = build_tree (str, cur + 1, ind2 - 1);
+            result->left = build (string, current + 1, it2 - 1);  // строим поддерево аргумента
         }
         else
         {
-            res->symbol = str[cur];
+            result->variable = string[current];  // записываем переменную
         }
     }
 
-    return res;
+    return result;
 }
 
-void tree_elem::LRR (tree_elem *elem, std::ostream &f)
+void tree_element::LRR (tree_element *element, std::ostream &f)
 {
-    if (elem)
+    if (element)
     {
-        if (elem->func || elem->symbol)
+        if (element->func || element->variable)  // это функция или переменная
         {
-            if (elem->number!=1)
+            if (element->number != 1)  // это коэффициент и он не равен 1
             {
-                f << elem->number;
+                f << element->number;
             }
         }
-        else if (!elem->oper)
+        else if (!element->operation)  // не функция или символ
         {
-            f << elem->number;
+            f << element->number;
         }
 
-        if (elem->symbol || elem->oper)
+        if (element->variable || element->operation)  // в узле знак или переменная
         {
-            if (elem->left)
+            if (element->left)  // существует левая ветвь
             {
-                if (elem->oper)
+                if (element->operation)  // существует оператор
                 {
-                    if (((elem->oper == '*' || elem->oper == '/') && (elem->left->oper == '+' || elem->left->oper == '-'
-                             || elem->left->number < 0) ) || (elem->oper == '^' && elem->left->oper))
+                    if (((element->operation == '*' || element->operation == '/') && (element->left->operation == '+'
+                        || element->left->operation == '-' || element->left->number < 0) )
+                        || (element->operation == '^' && element->left->operation))
                     {
                         f << '(';
-                        LRR(elem->left, f);
+                        LRR(element->left, f); // вывод левой ветви
                         f << ')';
                     }
                     else
                     {
-                        LRR (elem->left, f);
+                        LRR (element->left, f);
                     }
                 }
                 else
                 {
-                    LRR (elem->left, f);
+                    LRR (element->left, f);
                 }
             }
 
-            if (elem->oper)
+            if (element->operation)  // если оператор
             {
-                f << elem->oper;
+                f << element->operation;
             }
-            else
+            else  // если символ
             {
-                f << elem->symbol;
+                f << element->variable;
             }
 
-            if (elem->right)
+            if (element->right)  // аналогично правой
             {
-                if(elem->oper)
+                if(element->operation)
                 {
-                    if ((elem->oper == '/' || (elem->oper == '*' && (elem->right->oper =='+' || elem->right->oper=='-'
-                        || elem->right->number < 0)))
-                        || (elem->oper == '^' && elem->right->oper))
+                    if ((element->operation == '/' || (element->operation == '*' && (element->right->operation == '+'
+                        || element->right->operation == '-' || element->right->number < 0)))
+                        || (element->operation == '^' && element->right->operation))
                     {
                         f << '(';
-                        LRR (elem->right, f);
+                        LRR (element->right, f);
                         f << ')';
                     }
                     else
                     {
-                        LRR (elem->right, f);
+                        LRR (element->right, f);
                     }
                 }
                 else
                 {
-                    LRR(elem->right, f);
+                    LRR(element->right, f);
                 }
             }
         }
-        else if (elem->func)
+        else if (element->func)  // элемент - функция и не имеет ветвей
         {
-            f << get_function_name (elem->func);
+            f << get_function_name (element->func); // выводим имя функции
             f << "(";
-            LRR (elem->left, f);
+            LRR (element->left, f);  // выводим левое поддерево
             f << ")";
         }
     }
 }
 
-void tree_elem::copy_elem (tree_elem *dest, tree_elem *src)
+void tree_element::copy_element (tree_element *destination, tree_element *source)
 {
-    if((src) && (dest))
+    if (source && destination) // передатчик и приемник существуют
     {
-        dest->symbol = src->symbol;
-        dest->oper = src->oper;
-        dest->func = src->func;
-        dest->number = src->number;
-        dest->complex_oper = src->complex_oper;
-        dest->right = src->right;
-        dest->left = src->left;
+        destination->variable = source->variable;
+        destination->operation = source->operation;
+        destination->func = source->func;
+        destination->number = source->number;
+        destination->complex_operation = source->complex_operation;
+        destination->right = source->right;
+        destination->left = source->left;
     }
 }
 
-tree_elem* tree_elem::copy_tree(tree_elem* src)
+tree_element* tree_element::copy_tree(tree_element* source)
 {
-    tree_elem* temp = nullptr;
+    tree_element* temp = nullptr;
 
-    if (src)
+    if (source)  // передатчик существует
     {
-        temp = new tree_elem;
-        temp->symbol = src->symbol;
-        temp->oper = src->oper;
-        temp->func = src->func;
-        temp->number = src->number;
-        temp->complex_oper = src->complex_oper;
-        temp->right = copy_tree(src->right);
-        temp->left = copy_tree(src->left);
+        temp = new tree_element;
+        temp->variable = source->variable;
+        temp->operation = source->operation;
+        temp->func = source->func;
+        temp->number = source->number;
+        temp->complex_operation = source->complex_operation;
+        temp->right = copy_tree(source->right);
+        temp->left = copy_tree(source->left);
     }
 
     return temp;
 }
 
-void tree_elem::Destroy_tree (tree_elem * elem)
+void tree_element::destroy_tree (tree_element * element)
 {
-    if(elem)
+    if(element)
     {
-        Destroy_tree (elem->left);
-        Destroy_tree (elem->right);
-        delete elem;
+        destroy_tree (element->left);
+        destroy_tree (element->right);
+        delete element;
     }
 }
 
-int tree_elem::search_var (tree_elem * elem, char ch)
+int tree_element::search_var (tree_element* element, char ch)
 {
-    if (elem)
+    if (element)
     {
-        return (elem->symbol == ch || search_var (elem->left, ch)
-                || search_var (elem->right, ch));
+        return ((element->variable == ch) || search_var (element->left, ch)
+                || search_var (element->right, ch));  // Вернуть символ или продолжать проверять
     }
 
     else return 0;
 }
 
-bool tree_elem::isdgt (tree_elem * elem)
+bool tree_element::is_digit (tree_element* element)
 {
-    if (elem && !elem->func && !elem->symbol && !elem->oper)
+    if (element && !element->func && !element->variable && !element->operation)
     {
         return true;
     }
@@ -354,9 +356,9 @@ bool tree_elem::isdgt (tree_elem * elem)
     return false;
 }
 
-bool tree_elem::iszero (tree_elem * elem)
+bool tree_element::is_zero (tree_element* element)
 {
-    if(elem && !elem->func && !elem->symbol && !elem->oper && !elem->number)
+    if(element && !element->func && !element->variable && !element->operation && !element->number)
     {
         return true;
     }
@@ -364,9 +366,9 @@ bool tree_elem::iszero (tree_elem * elem)
     return false;
 }
 
-bool tree_elem::is_one(tree_elem *elem)
+bool tree_element::is_one (tree_element* element)
 {
-    if(elem && !elem->func && !elem->symbol && !elem->oper && elem->number == 1)
+    if(element && !element->func && !element->variable && !element->operation && element->number == 1)
     {
         return true;
     }
@@ -374,130 +376,133 @@ bool tree_elem::is_one(tree_elem *elem)
     return false;
 }
 
-void tree_elem::ch_op (tree_elem * elem)
+void tree_element::ch_op (tree_element* element)
 {
-    if (elem)
+    if (element)
     {
-        if (elem->oper == '+')
+        if (element->operation == '+')
         {
-            elem->oper = '-';
+            element->operation = '-';
         }
-        else if (elem->oper == '-')
+        else if (element->operation == '-')
         {
-            elem->oper = '+';
+            element->operation = '+';
         }
 
-        ch_op (elem->left);
-        ch_op (elem->right);
+        ch_op (element->left);
+        ch_op (element->right);
     }
 }
 
-void tree_elem::change_oper (tree_elem * elem)
+void tree_element::change_operation (tree_element* element)
 {
-    if (elem)
+    if (element)
     {
-        if (elem->oper == '-')
+        if (element->operation == '-')
         {
-            if (elem->right->oper && elem->right->complex_oper)
+            if (element->right->operation && element->right->complex_operation)  // в правом поддереве сложный оператор
             {
-                ch_op (elem->right);
+                ch_op (element->right);  // инвертировать операторы поддерева
             }
 
-            if (elem->right->oper == '+')
+            if (element->right->operation == '+')
             {
-                if (elem->right->left && elem->right->left->oper && elem->right->left->complex_oper)
+                if (element->right->left && element->right->left->operation && element->right->left->complex_operation)
+                    // в правом поддереве существует левая ветвь и она является оператором
                 {
-                    ch_op (elem->right->left);
+                    ch_op (element->right->left);  // Инвертировать операторы
                 }
             }
         }
 
-        change_oper (elem->left);
-        change_oper (elem->right);
+        change_operation (element->left);
+        change_operation (element->right);
     }
 }
 
-void tree_elem::Calc(tree_elem * elem, char oper)
+void tree_element::calculate (tree_element* element, char oper)
 {
-    if (elem)
+    if (element)
     {
-        if (elem->oper)
+        if (element->operation)  // является операцией
         {
-            Calc (elem->left, oper);
-            Calc (elem->right, elem->oper);
+            calculate (element->left, oper);
+            calculate (element->right, element->operation);
 
-            if (isdgt (elem->left) && isdgt (elem->right))
+            if (is_digit (element->left) && is_digit (element->right))  // если являются числами
             {
-                if(elem->oper == '+' || elem->oper == '-')
+                if(element->operation == '+' || element->operation == '-')
                 {
-                    switch (elem->oper)
+                    switch (element->operation)  // вычисляем значения
                     {
                         case '+':
-                            elem->number = elem->left->number + elem->right->number;
+                            element->number = element->left->number + element->right->number;
 
                         case '-':
-                            elem->number = elem->left->number + elem->right->number;
+                            element->number = element->left->number + element->right->number;
                     }
 
-                    elem->oper = 0;
-                    elem->complex_oper = 0;
-                    delete elem->left;
-                    delete elem->right;
-                    elem->left = nullptr;
-                    elem->right = nullptr;
+                    element->operation = 0;  // обнуляем операции и удаляем ветви
+                    element->complex_operation = 0;
+                    delete element->left;
+                    delete element->right;
+                    element->left = nullptr;
+                    element->right = nullptr;
                 }
             }
         }
     }
 }
 
-void tree_elem::Simplify (tree_elem * elem)
+void tree_element::simplify (tree_element* element)
 {
-    if (elem)
+    if (element)
     {
-        Simplify (elem->left);
-        Simplify (elem->right);
+        simplify (element->left);
+        simplify (element->right);
+
         label:
-        if (elem->oper)
+
+        if (element->operation)  // есть операция
         {
-            if(iszero(elem->left) || iszero(elem->right))
+            if (is_zero (element->left) || is_zero (element->right))  // левая или правая ветвь равны 0
             {
-                if(elem->oper == '*' || elem->oper == '/' && iszero(elem->left))
+                if (element->operation == '*' || element->operation == '/' && is_zero (element->left))  // + или - и левая == 0
                 {
-                    Destroy_tree(elem->left);
-                    Destroy_tree(elem->right);
-                    elem->left = nullptr;
-                    elem->right = nullptr;
-                    elem->oper = 0;
-                    elem->number = 0;
+                    destroy_tree (element->left);
+                    destroy_tree (element->right);
+                    element->left = nullptr;
+                    element->right = nullptr;
+                    element->operation = 0;
+                    element->number = 0;
                 }
-                else if(elem->oper == '+' || elem->oper == '-')
+                else if (element->operation == '+' || element->operation == '-')  // + или -
                 {
-                    if(iszero (elem->left))
+                    if(is_zero (element->left))  // левая равна 0
                     {
-                        if(elem->oper == '+')
+                        if(element->operation == '+')
                         {
-                            Destroy_tree (elem->left);
-                            tree_elem* temp = elem->right;
-                            copy_elem (elem, elem->right);
+                            destroy_tree (element->left);
+                            tree_element* temp = element->right;  // создаем временную переменную, содержащую правую ветвь
+                            copy_element (element, element->right);  // копируем содержимое элемента в его правую ветвь
 
                             if (temp)
                             {
                                 delete temp;
                             }
                         }
-                        else if (elem->oper=='-')
+                        else if (element->operation == '-')
                         {
-                            elem->oper = '*';
-                            elem->left->number = -1;
-                            goto label;
+                            element->operation = '*';  // установить оператор *
+                            element->left->number = -1;  // установить значение левой ветви
+                            goto label;  // проверить сначала
                         }
                     }
-                    else if (iszero (elem->right))
+                    else if (is_zero (element->right))  // аналогично левой части
                     {
-                        Destroy_tree (elem->right);
-                        tree_elem* temp = elem->left;
-                        copy_elem (elem, elem->left);
+                        destroy_tree (element->right);
+                        tree_element* temp = element->left;
+                        copy_element (element, element->left);
 
                         if (temp)
                         {
@@ -505,66 +510,67 @@ void tree_elem::Simplify (tree_elem * elem)
                         }
                     }
                 }
-                else if (elem->oper == '^')
+                else if (element->operation == '^')  // x^0 = 1;  0^a = 0;
                 {
-                    Destroy_tree (elem->left);
-                    elem->left = nullptr;
-                    Destroy_tree (elem->right);
-                    elem->right = nullptr;
-                    elem->oper = 0;
+                    destroy_tree (element->left); // удаляем ветви и удаляем операцию
+                    element->left = nullptr;
+                    destroy_tree (element->right);
+                    element->right = nullptr;
+                    element->operation = 0;
 
-                    if(iszero (elem->right))
+                    if(is_zero (element->right))  // присваиваем результат
                     {
-                        elem->number = 1;
+                        element->number = 1;
                     }
                     else
                     {
-                        elem->number = 0;
+                        element->number = 0;
                     }
                 }
             }
-            else if (isdgt(elem->left) && isdgt(elem->right) && elem->oper != '+' && elem->oper!='-')
+            else if (is_digit (element->left) && is_digit (element->right) && element->operation != '+'
+                && element->operation != '-')  // правая и левая не равны 0 и операция не + и -
             {
-                switch (elem->oper)
+                switch (element->operation)
                 {
                     case '*':
-                        elem->number = elem->left->number * elem->right->number;
+                        element->number = element->left->number * element->right->number;
                         break;
                     case '/':
-                        elem->number = elem->left->number / elem->right->number;
+                        element->number = element->left->number / element->right->number;
                         break;
                     case '+':
-                        elem->number = elem->left->number + elem->right->number;
+                        element->number = element->left->number + element->right->number;
                         break;
                     case '-':
-                        elem->number = elem->left->number - elem->right->number;
+                        element->number = element->left->number - element->right->number;
                 }
 
-                elem->oper = 0;
-                delete (elem->left);
-                delete (elem->right);
-                elem->left = nullptr;
-                elem->right = nullptr;
+                element->operation = 0;  // обнуляем операцию и удаляем ветви
+                delete (element->left);
+                delete (element->right);
+                element->left = nullptr;
+                element->right = nullptr;
             }
 
-            if (elem->oper == '*')
+            if (element->operation == '*')
             {
-                if (is_one (elem->left))
+                if (is_one (element->left))
                 {
-                    Destroy_tree (elem->left);
-                    tree_elem* temp = elem->right;
-                    copy_elem (elem, elem->right);
+                    destroy_tree (element->left);
+                    tree_element* temp = element->right;  // копировать во временное дерево правую ветвь
+                    copy_element (element, element->right); // копировать дерево в его правую ветвь
 
                     if (temp)
                     {
                         delete temp;
                     }
                 }
-                else if (is_one (elem->right))
+                else if (is_one (element->right))  // аналогично левой
                 {
-                    Destroy_tree (elem->right);
-                    tree_elem* temp = elem->left;
-                    copy_elem (elem, elem->left);
+                    destroy_tree (element->right);
+                    tree_element* temp = element->left;
+                    copy_element (element, element->left);
 
                     if (temp)
                     {
@@ -573,276 +579,276 @@ void tree_elem::Simplify (tree_elem * elem)
                 }
             }
 
-            if (elem->oper == '^' && is_one (elem->right))
+            if (element->operation == '^' && is_one (element->right))  // операция ^ и правая ветвь равна 1
             {
-                delete elem->right;
-                tree_elem* p = elem->left;
-                copy_elem (elem, elem->left);
-                delete p;
+                delete element->right;  // удаляем правую ветвь
+                tree_element* tmp = element->left;  // копируем левую во временную переменную
+                copy_element (element, element->left); // копируем дерево в его левую ветвь
+                delete tmp;
             }
         }
     }
 }
 
-void tree_elem::Diff (tree_elem* elem, char ch)
+void tree_element::differentiation (tree_element* element, char ch)
 {
-    if(elem)
+    if(element)
     {
-        if(search_var(elem, ch))
+        if(search_var(element, ch))  // в выражении есть переменная ch
         {
-            if(elem->oper)
+            if(element->operation)  // элемент является операцией
             {
-                switch(elem->oper)
+                switch(element->operation)
                 {
-                    case '+':
-                    case '-':
-                        Diff (elem->left, ch);
-                        Diff (elem->right, ch);
+                    case '+':  // (a+b)'= a'+ b'
+                    case '-':  // (a-b)'= a'- b'
+                        differentiation (element->left, ch);
+                        differentiation (element->right, ch);
                         break;
-                    case '*':
+                    case '*':  // (ab)'= a'b + ab'
                     {
-                        elem->oper = '+';
-                        elem->complex_oper = 1;
+                        element->operation = '+'; // оператор результата
+                        element->complex_operation = true; // признак сложного оператора
 
-                        auto temp1 = new tree_elem;
-                        temp1->oper = '*';
-                        temp1->left = copy_tree(elem->left);
-                        Diff (temp1->left, ch);
-                        temp1->right = copy_tree(elem->right);
+                        auto temp1 = new tree_element;  // создаем новый элемент
+                        temp1->operation = '*';  // присваиваем операцию
+                        temp1->left = copy_tree (element->left);  // копируем в него левую ветвь
+                        differentiation (temp1->left, ch);  // дифференцируем левое поддерево
+                        temp1->right = copy_tree (element->right);  // копируем обратно
 
-                        auto *temp2 = new tree_elem;
-                        temp2->oper = '*';
-                        temp2->left = elem->left;
-                        temp2->right = elem->right;
-                        Diff(temp2->right, ch);
+                        auto *temp2 = new tree_element;  // аналогично левой
+                        temp2->operation = '*';
+                        temp2->left = element->left;
+                        temp2->right = element->right;
+                        differentiation (temp2->right, ch);
 
-                        elem->left = temp1;
-                        elem->right = temp2;
+                        element->left = temp1; // записываем в дерево
+                        element->right = temp2;
                         break;
                     }
-                    case '/':
+                    case '/':  // (a/b)'= (a'b - ab')/b^2
                     {
-                        elem->oper = '/';
+                        element->operation = '/';  // аналогично *
 
-                        auto *temp1 = new tree_elem;
-                        temp1->oper = '^';
-                        temp1->left = copy_tree(elem->right);
-                        temp1->right = new tree_elem;
+                        auto *temp1 = new tree_element;
+                        temp1->operation = '^';
+                        temp1->left = copy_tree (element->right);
+                        temp1->right = new tree_element;
                         temp1->right->number = 2;
 
-                        auto *temp2 = new tree_elem;
-                        temp2->oper = '*';
-                        temp2->left = copy_tree(elem->left);
-                        Diff(temp2->left, ch);
-                        temp2->right = copy_tree(elem->right);
+                        auto *temp2 = new tree_element;
+                        temp2->operation = '*';
+                        temp2->left = copy_tree (element->left);
+                        differentiation (temp2->left, ch);
+                        temp2->right = copy_tree (element->right);
 
-                        auto *temp3 = new tree_elem;
-                        temp3->oper = '*';
-                        temp3->left = elem->left;
-                        temp3->right = elem->right;
-                        Diff(temp3->right, ch);
+                        auto *temp3 = new tree_element;
+                        temp3->operation = '*';
+                        temp3->left = element->left;
+                        temp3->right = element->right;
+                        differentiation (temp3->right, ch);
 
-                        auto *temp4 = new tree_elem;
-                        temp4->oper = '-';
-                        temp4->complex_oper = 1;
+                        auto *temp4 = new tree_element;
+                        temp4->operation = '-';
+                        temp4->complex_operation = 1;
                         temp4->left = temp2;
                         temp4->right = temp3;
 
-                        elem->left = temp4;
-                        elem->right = temp1;
+                        element->left = temp4;
+                        element->right = temp1;
                         break;
                     }
-                    case '^':
+                    case '^':  // аналогично * и /, но с проверкой на сложную степень
                     {
-                        elem->oper = '*';
-                        tree_elem *temp1;
+                        element->operation = '*';
+                        tree_element *temp1;
 
-                        if(isdgt(elem->right) && elem->right->number != 1)
+                        if (is_digit (element->right) && element->right->number != 1)  // x^a = a*x^(a-1)
                         {
-                            temp1 = new tree_elem;
-                            temp1->oper = '^';
-                            temp1->left = elem->left;
-                            temp1->right = elem->right;
-                            elem->left = new tree_elem;
-                            elem->left->number = elem->right->number;
+                            temp1 = new tree_element;
+                            temp1->operation = '^';
+                            temp1->left = element->left;
+                            temp1->right = element->right;
+                            element->left = new tree_element;
+                            element->left->number = element->right->number;
                             temp1->right->number -= 1;
-                            elem->right = temp1;
+                            element->right = temp1;
                         }
-                        else
+                        else  // (a^b)' = a^b*(b'*ln(a) + b*a'/a)
                         {
-                            temp1 = new tree_elem;
-                            temp1->oper = '^';
-                            temp1->left = elem->left;
-                            temp1->right = elem->right;
-                            elem->left = temp1;
+                            temp1 = new tree_element;
+                            temp1->operation = '^';
+                            temp1->left = element->left;
+                            temp1->right = element->right;
+                            element->left = temp1;
 
-                            elem->right = new tree_elem;
-                            elem->right->oper = '+';
-                            elem->complex_oper = 1;
+                            element->right = new tree_element;
+                            element->right->operation = '+';
+                            element->complex_operation = true;
 
-                            temp1 = new tree_elem;
-                            temp1->oper = '*';
-                            temp1->left = copy_tree(elem->left->right);
-                            Diff(temp1->left, ch);
-                            temp1->right = new tree_elem;
+                            temp1 = new tree_element;
+                            temp1->operation = '*';
+                            temp1->left = copy_tree(element->left->right);
+                            differentiation (temp1->left, ch);
+                            temp1->right = new tree_element;
                             temp1->right->func = ln;
-                            temp1->right->left = copy_tree(elem->left->left);
+                            temp1->right->left = copy_tree(element->left->left);
 
-                            elem->right->left = temp1;
+                            element->right->left = temp1;
 
-                            temp1 = new tree_elem;
-                            temp1->oper = '*';
-                            temp1->left = copy_tree(elem->left->right);
-                            temp1->right = new tree_elem;
-                            temp1->right->oper = '/';
-                            temp1->right->left = copy_tree(elem->left->left);
-                            Diff(temp1->right->left, ch);
-                            temp1->right->right = copy_tree(elem->left->left);
+                            temp1 = new tree_element;
+                            temp1->operation = '*';
+                            temp1->left = copy_tree(element->left->right);
+                            temp1->right = new tree_element;
+                            temp1->right->operation = '/';
+                            temp1->right->left = copy_tree(element->left->left);
+                            differentiation (temp1->right->left, ch);
+                            temp1->right->right = copy_tree(element->left->left);
 
-                            elem->right->right = temp1;
+                            element->right->right = temp1;
                         }
                     }
                 }
             }
-            else if(elem->symbol)
+            else if (element->variable)  // если символ
             {
-                elem->symbol = 0;
-                elem->number = 1;
+                element->variable = 0; // записываем значения
+                element->number = 1;
             }
-            else if(elem->func)
+            else if (element->func)  // если функция
             {
-                auto temp1 = new tree_elem;
-                copy_elem(temp1, elem);
-                elem->func = notfunc;
-                elem->oper = '*';
-                elem->number = 1;
+                auto temp1 = new tree_element;  // (f(g(x)))' = g'(x)*f'(g(x))
+                copy_element (temp1, element);
+                element->func = notfunc;
+                element->operation = '*';
+                element->number = 1;
 
-                elem->left = copy_tree(temp1->left);
-                Diff(elem->left, ch);
+                element->left = copy_tree(temp1->left);
+                differentiation (element->left, ch);
 
-                if (temp1->func == sin)
+                if (temp1->func == sin)  // sin'= cos
                 {
-                    elem->right = temp1;
-                    elem->right->func = cos;
+                    element->right = temp1;
+                    element->right->func = cos;
                 }
-                else if (temp1->func == cos)
+                else if (temp1->func == cos)  // cos'= -sin
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '*';
-                    elem->right->left = new tree_elem;
-                    elem->right->left->number = -1;
-                    elem->right->right = temp1;
-                    elem->right->right->func = sin;
+                    element->right = new tree_element;
+                    element->right->operation = '*';
+                    element->right->left = new tree_element;
+                    element->right->left->number = -1;
+                    element->right->right = temp1;
+                    element->right->right->func = sin;
                 }
-                else if (temp1->func == arcsin)
+                else if (temp1->func == arcsin)  // arcsin'(x)= 1/sqrt(1-x^2)
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '/';
-                    elem->right->left = new tree_elem;
+                    element->right = new tree_element;
+                    element->right->operation = '/';
+                    element->right->left = new tree_element;
 
                     if(temp1->func == arccos)
                     {
-                        elem->right->left->number = 1;
+                        element->right->left->number = 1;
                     }
 
-                    elem->right->right = new tree_elem;
-                    elem->right->right->func = sqrt;
+                    element->right->right = new tree_element;
+                    element->right->right->func = sqrt;
 
-                    auto temp2 = new tree_elem;
-                    temp2->oper = '-';
-                    temp2->left = new tree_elem;
-                    temp2->right = new tree_elem;
-                    temp2->right->oper = '^';
+                    auto temp2 = new tree_element;
+                    temp2->operation = '-';
+                    temp2->left = new tree_element;
+                    temp2->right = new tree_element;
+                    temp2->right->operation = '^';
                     temp2->right->left = temp1->left;
-                    temp2->right->right = new tree_elem;
+                    temp2->right->right = new tree_element;
                     temp2->right->right->number = 2;
 
-                    elem->right->right->left = temp2;
+                    element->right->right->left = temp2;
                 }
-                else if (temp1->func == arccos)
+                else if (temp1->func == arccos)  // arccos'(x)= -1/sqrt(1-x^2)
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '/';
-                    elem->right->left = new tree_elem;
+                    element->right = new tree_element;
+                    element->right->operation = '/';
+                    element->right->left = new tree_element;
 
                     if(temp1->func == arccos)
                     {
-                        elem->right->left->number =-1;
+                        element->right->left->number =-1;
                     }
 
-                    elem->right->right = new tree_elem;
-                    elem->right->right->func = sqrt;
+                    element->right->right = new tree_element;
+                    element->right->right->func = sqrt;
 
-                    auto temp2 = new tree_elem;
-                    temp2->oper = '-';
-                    temp2->left = new tree_elem;
-                    temp2->right = new tree_elem;
-                    temp2->right->oper = '^';
+                    auto temp2 = new tree_element;
+                    temp2->operation = '-';
+                    temp2->left = new tree_element;
+                    temp2->right = new tree_element;
+                    temp2->right->operation = '^';
                     temp2->right->left = temp1->left;
-                    temp2->right->right = new tree_elem;
+                    temp2->right->right = new tree_element;
                     temp2->right->right->number = 2;
 
-                    elem->right->right->left = temp2;
+                    element->right->right->left = temp2;
                 }
-                else if (temp1->func == tg)
+                else if (temp1->func == tg)  // tg'(x)= 1 + (tg(x))^2
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '+';
-                    elem->right->left = new tree_elem;
-                    elem->right->right = new tree_elem;
-                    elem->right->right->oper = '^';
-                    elem->right->right->left = temp1;
-                    elem->right->right->right = new tree_elem;
-                    elem->right->right->right->number = 2;
+                    element->right = new tree_element;
+                    element->right->operation = '+';
+                    element->right->left = new tree_element;
+                    element->right->right = new tree_element;
+                    element->right->right->operation = '^';
+                    element->right->right->left = temp1;
+                    element->right->right->right = new tree_element;
+                    element->right->right->right->number = 2;
                 }
-                else if (temp1->func == arctg)
+                else if (temp1->func == arctg)  // arctg'(x) = 1/(1+x^2)
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '/';
-                    elem->right->left = new tree_elem;
-                    elem->right->right = new tree_elem;
-                    elem->right->right->oper = '+';
-                    elem->right->right->left = new tree_elem;
-                    elem->right->right->right = new tree_elem;
-                    elem->right->right->right->oper = '^';
-                    elem->right->right->right->left = temp1->left;
-                    elem->right->right->right->right = new tree_elem;
-                    elem->right->right->right->right->number = 2;
+                    element->right = new tree_element;
+                    element->right->operation = '/';
+                    element->right->left = new tree_element;
+                    element->right->right = new tree_element;
+                    element->right->right->operation = '+';
+                    element->right->right->left = new tree_element;
+                    element->right->right->right = new tree_element;
+                    element->right->right->right->operation = '^';
+                    element->right->right->right->left = temp1->left;
+                    element->right->right->right->right = new tree_element;
+                    element->right->right->right->right->number = 2;
                 }
-                else if (temp1->func == sqrt)
+                else if (temp1->func == sqrt)  // sqrt'(x) = (x^(1/2))'= 1/(2*sqrt(x))
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '/';
-                    elem->right->left = new tree_elem;
-                    elem->right->right = new tree_elem;
-                    elem->right->right->oper = '*';
-                    elem->right->right->left = new tree_elem;
-                    elem->right->right->left->number = 2;
-                    elem->right->right->right = temp1;
+                    element->right = new tree_element;
+                    element->right->operation = '/';
+                    element->right->left = new tree_element;
+                    element->right->right = new tree_element;
+                    element->right->right->operation = '*';
+                    element->right->right->left = new tree_element;
+                    element->right->right->left->number = 2;
+                    element->right->right->right = temp1;
                 }
-                else if (temp1->func == exp)
+                else if (temp1->func == exp)  // (e^x)' = e^x
                 {
-                    elem->right = temp1;
+                    element->right = temp1;
                 }
-                else if (temp1->func == ln)
+                else if (temp1->func == ln)  // ln'(x) = 1/x
                 {
-                    elem->right = new tree_elem;
-                    elem->right->oper = '/';
-                    elem->right->left = new tree_elem;
-                    elem->right->right = temp1->left;
+                    element->right = new tree_element;
+                    element->right->operation = '/';
+                    element->right->left = new tree_element;
+                    element->right->right = temp1->left;
                 }
             }
         }
-        else
+        else  // нет переменной ch
         {
-            elem->func = notfunc;
-            elem->oper = 0;
-            elem->symbol = 0;
-            elem->number = 0;
-            Destroy_tree(elem->left);
-            Destroy_tree(elem->right);
-            elem->left = nullptr;
-            elem->right = nullptr;
+            element->func = notfunc;
+            element->operation = 0;
+            element->variable = 0;
+            element->number = 0;
+            destroy_tree (element->left);
+            destroy_tree (element->right);
+            element->left = nullptr;
+            element->right = nullptr;
         }
     }
 }
@@ -856,7 +862,7 @@ void buffer::add (char ch)
 {
     array[index] = ch;
     index++;
-    array[index] = 0;
+    array[index] = 0;  // конец строки
 }
 
 void buffer::clear ()
@@ -865,35 +871,35 @@ void buffer::clear ()
     array[index] = 0;
 }
 
-char* buffer::get_str (char* s)
+char* buffer::get_string (char* string)
 {
-    if(s)
+    if(string)
     {
-        strcpy(s, array);
+        strcpy(string, array);  // копируем стек в сроку
     }
     return array;
 }
 
-char* get_token(char* str, int &ind)
+char* get_token(char* string, int &index)
 {
-    char * res = new char [15];
+    char * result = new char [16];
 
-    if (isalpha (str[ind]) && isalpha (str[ind+1]))
+    if (isalpha (string[index]) && isalpha (string[index + 1]))  // собираем последовательность букв
     {
         buffer buf;
 
-        while (isalpha (str[ind]))
+        while (isalpha (string[index])) // Если символ строки - символ
         {
-            buf.add (str[ind]);
-            ind++;
+            buf.add (string[index]);  // добавляем в буфер
+            index++;  // проверяем следующий
         }
-        strcpy (res,buf.get_str());
+        strcpy (result,buf.get_string());  // копируем буфер
     }
 
-    return res;
+    return result;
 }
 
-functions isfunc (char* str)
+functions is_function (char* str)  // для ввода
 {
     functions res = notfunc;
     if(!stricmp(str,"sin")) res = sin;
@@ -905,78 +911,80 @@ functions isfunc (char* str)
     else if (!stricmp(str,"sqrt")) res = sqrt;
     else if (!stricmp(str,"e")) res = exp;
     else if (!stricmp(str,"ln")) res = ln;
+    else if (!stricmp(str,"log")) res = log;
     return res;
 }
 
-char* get_function_name (functions index)
+char* get_function_name (functions index)  // для вывода
 {
-    char* res = nullptr;
+    char* result= nullptr;
 
     switch (index)
     {
-        case 1: res = (char*) "sin"; break;
-        case 2: res = (char*) "asin"; break;
-        case 3: res = (char*) "cos"; break;
-        case 4: res = (char*) "acos"; break;
-        case 5: res = (char*) "tg"; break;
-        case 6: res = (char*) "arctg"; break;
-        case 7: res = (char*) "sqrt"; break;
-        case 8: res = (char*) "exp"; break;
-        case 9: res = (char*) "ln"; break;
-        default: res = (char*) "Error";
+        case 1: result = (char*) "sin"; break;
+        case 2: result = (char*) "asin"; break;
+        case 3: result = (char*) "cos"; break;
+        case 4: result = (char*) "acos"; break;
+        case 5: result = (char*) "tg"; break;
+        case 6: result = (char*) "arctg"; break;
+        case 7: result = (char*) "sqrt"; break;
+        case 8: result = (char*) "exp"; break;
+        case 9: result = (char*) "ln"; break;
+        case 10: result = (char*) "log"; break;
+        default: result = (char*) "Error";
     }
 
-    return res;
+    return result;
 }
 
-int analysis(char *str, int &ind)
+int analysis (char *string, int &index)
 {
-    int result = 1, bracket = 0;
+    bool result = true, bracket = false;
 
-    if (str[ind] == '(')
+    if (string[index] == '(')
     {
-        bracket = 1;
-        ind++;
+        bracket = true;
+        index++;
     }
 
-    while (str[ind] && result && str[ind] != ')')
+    while (string[index] && result && string[index] != ')')  // существует символ и это не ')'
     {
-        if (str[ind] == '(')
+        if (string[index] == '(')
         {
-            result = analysis (str,ind);
+            result = analysis (string,index);
         }
         else
         {
-            if (isalpha (str[ind]) && isalpha(str[ind + 1]))
+            if (isalpha (string[index]) && isalpha (string[index + 1])) // составляем последовательность символов
             {
                 buffer buf;
 
-                while (isalpha(str[ind]))
+                while (isalpha(string[index]))
                 {
-                    buf.add (str[ind]);
-                    ind++;
+                    buf.add (string[index]);
+                    index++;
                 }
 
-                ind--;
-                result = (result && isfunc(buf.get_str()));
+                index--;
+                result = (result && is_function (buf.get_string())); // проверяем является ли функцией
             }
 
-            ind++;
+            index++;
         }
     }
 
     if (bracket)
     {
-        if(str[ind] != ')')
+        if(string[index] != ')')  // если нет закрывающей
         {
-            result = 0;
+            result = false;
         }
 
-        ind++;
+        index++;
     }
-    else if(str[ind] == ')')
+    else if(string[index] == ')') // если была только закрывающая
     {
-        result = 0;
+        result = false;
     }
 
     return result;
@@ -987,61 +995,61 @@ int char_to_int (char ch)
     return ch - 48;
 }
 
-float get_number(char *str, int &cur)
+float get_number(char *string, int &current)
 {
     int mult1 = 10;
     float mult2 = 1;
-    float res = 0;
-    int sign = 1;
+    float result = 0;
+    int sign = 1; // признак знака + или -
 
-    if (str[cur] == '+' || str[cur]=='-')
+    if (string[current] == '+' || string[current]=='-')
     {
-        if (str[cur] == '-')
+        if (string[current] == '-')
         {
             sign -= 2;
         }
 
-        cur++;
+        current++; // следующий символ
     }
 
-    while(isdigit(str[cur]) || str[cur] == '.')
+    while (isdigit (string[current]) || string[current] == '.')
     {
-        if(str[cur] == '.')
+        if (string[current] == '.')
         {
-            mult1 = 1;
+            mult1 = 1; // признак вещественного
             mult2 = 1;
         }
-        else
+        else // число не вещественое
         {
-            res = res * mult1 + char_to_int (str[cur]) * mult2;
+            result = result * mult1 + char_to_int (string[current]) * mult2;
         }
 
-        if(mult1 < 10)
+        if (mult1 < 10)  // число вещественное
         {
             mult2 *= 0.1;
         }
 
-        cur++;
+        current++;
     }
 
-    return res * sign;
+    return result * sign;
 }
 
-void ignore_brackets(char * str, int &cur)
+void ignore_brackets(char* string, int &current)
 {
-    if(str[cur] == '(')
+    if(string[current] == '(')
     {
-        while(str[cur] != ')')
+        while(string[current] != ')')
         {
-            cur++;
+            current++;
 
-            if(str[cur] == '(')
+            if(string[current] == '(')
             {
-                ignore_brackets (str,cur);
+                ignore_brackets (string,current);
             }
         }
 
-        cur++;
+        current++;  // возвращает следующий символ после скобок
     }
 }
 
