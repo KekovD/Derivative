@@ -1,20 +1,19 @@
-#include <conio.h>
 #include "parser.h"
 #include <iostream>
+#include <string>
 #include <windows.h>
 
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    char string[256] = {0};
+    std::string str;
     tree_element tree;
 
     std::cout << "Выражение (без пробелов):";
-    std::cin >> string;
+    std::cin >> str;
 
-    tree.processing(string);
-    getch();
+    tree.processing(str);
 
     return 0;
 }
